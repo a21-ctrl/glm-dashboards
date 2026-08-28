@@ -51,6 +51,8 @@
   .period-select-wrap label{font-family:var(--font-display);font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-mute);}
   .period-select-wrap select{font-family:var(--font-body);font-size:13px;color:var(--text);background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:9px 12px;cursor:pointer;}
   .period-select-wrap select:focus-visible{outline:2px solid var(--blue);outline-offset:2px;}
+  .filter-group{display:flex;flex-direction:column;gap:6px;}
+  .filter-group-label{font-family:var(--font-display);font-weight:700;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-mute);}
   .sector-toggle button{font-family:var(--font-display);font-weight:600;font-size:12.5px;letter-spacing:.04em;background:transparent;border:none;color:var(--text-dim);padding:9px 20px;border-radius:5px;cursor:pointer;transition:background .15s ease,color .15s ease;}
   .sector-toggle button:hover{color:var(--text);}
   .sector-toggle button.active{background:var(--sc,var(--blue));color:#fff;}
@@ -155,9 +157,18 @@
   </div>
 
   <div class="filters-row">
-    <div class="sector-toggle" role="group" aria-label="Filtrar por sector" id="sector-toggle"></div>
-    <div class="sector-toggle" role="group" aria-label="Filtrar por propiedad" id="propiedad-toggle"></div>
-    <div class="sector-toggle" role="group" aria-label="Filtrar por tipo de aditamento" id="aditamento-toggle"></div>
+    <div class="filter-group">
+      <span class="filter-group-label">Sector</span>
+      <div class="sector-toggle" role="group" aria-label="Filtrar por sector" id="sector-toggle"></div>
+    </div>
+    <div class="filter-group">
+      <span class="filter-group-label">Propiedad</span>
+      <div class="sector-toggle" role="group" aria-label="Filtrar por propiedad" id="propiedad-toggle"></div>
+    </div>
+    <div class="filter-group">
+      <span class="filter-group-label">Tipo de Aditamento</span>
+      <div class="sector-toggle" role="group" aria-label="Filtrar por tipo de aditamento" id="aditamento-toggle"></div>
+    </div>
     <div class="period-select-wrap">
       <label for="year-select">Periodo</label>
       <select id="year-select" aria-label="Filtrar por año"></select>
