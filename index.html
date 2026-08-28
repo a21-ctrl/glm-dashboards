@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Uso de Montacargas | GLM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --blue:#2052BB;
+    --blue-dark:#082B5E;
+    --green:#71B714;
+    --green-dark:#588F10;
+    --bg:#F7F9FC;
+    --panel:#FFFFFF;
+    --border:#E2E7EF;
+    --text:#1D2939;
+    --text-dim:#5B6478;
+    --text-mute:#8B93A7;
+    --font-display:'Montserrat',sans-serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-font-smoothing:antialiased;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);line-height:1.5;}
+  a{color:inherit;}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px 80px;}
+
+  .topbar{background:var(--panel);border-bottom:1px solid var(--border);}
+  .topbar-inner{max-width:1180px;margin:0 auto;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+  .topbar-logo{height:44px;display:block;}
+  .topbar-meta{font-family:var(--font-display);font-weight:600;font-size:12px;letter-spacing:.10em;text-transform:uppercase;color:var(--text-dim);}
+
+  .status-banner{background:#EAF0FC;color:var(--blue-dark);font-family:var(--font-body);font-weight:500;font-size:13px;text-align:center;padding:9px 16px;border-top:1px solid var(--border);}
+  .status-banner strong{font-weight:600;}
+  .status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--blue);margin-right:7px;}
+
+  .plate{padding:36px 0 26px;margin-bottom:30px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:20px;}
+  .plate-eyebrow{font-family:var(--font-display);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin:0 0 10px;}
+  .plate-title{font-family:var(--font-display);font-weight:800;font-size:clamp(26px,3.6vw,38px);letter-spacing:-.01em;margin:0;color:var(--blue-dark);}
+  .plate-sub{font-family:var(--font-body);color:var(--text-dim);font-size:14.5px;margin:8px 0 0;}
+  .plate-meta{font-family:var(--font-body);font-size:13px;color:var(--text-dim);text-align:right;}
+  .plate-meta .updated{color:var(--blue);font-weight:600;}
+
+  .filters-row{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:32px;}
+  .sector-toggle{display:inline-flex;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:4px;gap:2px;}
+  .period-select-wrap{display:flex;align-items:center;gap:9px;}
+  .period-select-wrap label{font-family:var(--font-display);font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-mute);}
+  .period-select-wrap select{font-family:var(--font-body);font-size:13px;color:var(--text);background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:9px 12px;cursor:pointer;}
+  .period-select-wrap select:focus-visible{outline:2px solid var(--blue);outline-offset:2px;}
+  .sector-toggle button{font-family:var(--font-display);font-weight:600;font-size:12.5px;letter-spacing:.04em;background:transparent;border:none;color:var(--text-dim);padding:9px 20px;border-radius:5px;cursor:pointer;transition:background .15s ease,color .15s ease;}
+  .sector-toggle button:hover{color:var(--text);}
+  .sector-toggle button.active{background:var(--sc,var(--blue));color:#fff;}
+  .sector-toggle button:focus-visible{outline:2px solid var(--blue);outline-offset:2px;}
+
+  .pill-toggle{display:inline-flex;background:#EEF1F6;border-radius:7px;padding:3px;gap:2px;}
+  .pill-toggle button{font-family:var(--font-display);font-weight:600;font-size:11.5px;letter-spacing:.03em;background:transparent;border:none;color:var(--text-dim);padding:6px 13px;border-radius:5px;cursor:pointer;}
+  .pill-toggle button.active{background:var(--panel);color:var(--blue-dark);box-shadow:0 1px 2px rgba(8,43,94,0.10);}
+  .pill-toggle button:focus-visible{outline:2px solid var(--blue);outline-offset:2px;}
+
+  .meter-panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:36px 40px;display:flex;flex-wrap:wrap;gap:32px;align-items:center;justify-content:space-between;margin-bottom:20px;box-shadow:0 1px 3px rgba(8,43,94,0.05);}
+  .meter-label{font-family:var(--font-display);font-weight:700;font-size:11.5px;letter-spacing:.10em;text-transform:uppercase;color:var(--text-mute);margin:0 0 6px;}
+  .hero-number{font-family:var(--font-display);font-weight:800;font-size:clamp(44px,6.4vw,72px);color:var(--blue);line-height:1;letter-spacing:-.01em;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:10px;}
+  .hero-number .unit{font-family:var(--font-display);font-weight:700;font-size:20px;color:var(--green-dark);}
+  .hero-underline{height:5px;width:120px;border-radius:3px;margin-top:14px;background:linear-gradient(90deg,var(--blue),var(--green));}
+  .meter-caption{font-family:var(--font-body);font-size:13px;color:var(--text-dim);margin-top:12px;}
+  .meter-side{display:flex;flex-direction:column;gap:18px;}
+  .mini-stat{min-width:140px;}
+  .mini-stat .v{font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--blue-dark);font-variant-numeric:tabular-nums;}
+  .mini-stat .v small{font-size:14px;color:var(--text-dim);font-family:var(--font-body);font-weight:400;}
+  .mini-stat .l{font-family:var(--font-display);font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-mute);margin-top:4px;}
+  .meter-ring-col{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .ring-svg{width:84px;height:84px;}
+  .ring-legend{display:flex;flex-direction:row;gap:16px;justify-content:center;}
+  .ring-item{font-family:var(--font-mono);font-size:11.5px;color:var(--text-dim);white-space:nowrap;}
+  .ring-item b{color:var(--blue-dark);font-family:var(--font-display);}
+  .ring-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle;}
+  .ring-title{font-family:var(--font-display);font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-mute);}
+  .ring-empty{font-family:var(--font-body);font-size:12px;color:var(--text-mute);}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:28px;}
+  .kpi-card{background:var(--panel);border:1px solid var(--border);border-top:3px solid var(--blue);border-radius:8px;padding:20px 22px;}
+  .kpi-card.green{border-top-color:var(--green);}
+  .kpi-card .l{font-family:var(--font-display);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-mute);margin:0 0 10px;}
+  .kpi-card .v{font-family:var(--font-display);font-size:28px;font-weight:800;color:var(--blue-dark);margin:0;}
+  .kpi-card .d{font-family:var(--font-body);font-size:12.5px;color:var(--text-dim);margin-top:8px;}
+
+  .section{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:26px 26px 22px;margin-bottom:20px;}
+  .section-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px;}
+  .section-title{font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:.02em;text-transform:uppercase;margin:0;color:var(--blue-dark);}
+  .section-hint{font-family:var(--font-body);font-size:12px;color:var(--text-mute);}
+
+  .trend-svg{width:100%;height:auto;display:block;}
+  .trend-bar{fill:var(--blue);opacity:.85;transition:opacity .12s ease;}
+  .trend-bar:hover{opacity:1;}
+  .trend-axis{stroke:var(--border);stroke-width:1;}
+  .trend-label{font-family:var(--font-mono);font-size:9.5px;fill:var(--text-mute);}
+
+  .bar-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+  .bar-label{width:88px;flex-shrink:0;font-size:12.5px;font-weight:600;color:var(--text);font-family:var(--font-display);letter-spacing:.01em;}
+  .bar-track{flex:1;background:#EEF1F6;border-radius:5px;height:16px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:5px;transition:width .4s ease;}
+  .bar-value{width:92px;text-align:right;flex-shrink:0;font-size:12.5px;color:var(--text-dim);font-variant-numeric:tabular-nums;font-family:var(--font-mono);white-space:nowrap;}
+  .sector-legend{display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;font-family:var(--font-display);font-weight:600;font-size:11.5px;color:var(--text-dim);}
+  .legend-dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:middle;}
+
+  .sector-compare{display:flex;flex-direction:column;gap:16px;}
+  .sc-row{display:grid;grid-template-columns:110px 1fr 100px;align-items:center;gap:14px;}
+  .sc-name{font-family:var(--font-display);font-weight:600;font-size:12.5px;color:var(--text-dim);}
+  .sc-track{background:#EEF1F6;border-radius:4px;height:22px;overflow:hidden;}
+  .sc-fill{height:100%;border-radius:4px 0 0 4px;transition:width .5s ease;}
+  .sc-val{font-family:var(--font-mono);font-size:13px;text-align:right;color:var(--blue-dark);font-weight:600;white-space:nowrap;}
+
+  table.manifest{width:100%;border-collapse:collapse;font-family:var(--font-body);font-size:13.5px;}
+  table.manifest thead th{text-align:left;font-family:var(--font-display);font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-mute);padding:0 10px 10px;border-bottom:1px solid var(--border);}
+  table.manifest td{padding:11px 10px;border-bottom:1px solid var(--border);color:var(--text);font-variant-numeric:tabular-nums;}
+  table.manifest tbody tr:hover{background:#FAFBFD;}
+  .badge{display:inline-block;font-family:var(--font-display);font-weight:600;font-size:10px;letter-spacing:.04em;padding:3px 8px;border-radius:4px;}
+  .badge.top{background:#EAF0FC;color:var(--blue);}
+  .badge.low{background:#F0F6E3;color:var(--green-dark);}
+  .id-cell{color:var(--blue);font-family:var(--font-mono);font-weight:600;}
+  .sector-pill{display:inline-block;font-family:var(--font-display);font-weight:600;font-size:10.5px;padding:2px 8px;border-radius:10px;color:#fff;}
+
+  footer{margin-top:36px;padding-top:18px;border-top:1px solid var(--border);font-family:var(--font-body);font-size:12px;color:var(--text-mute);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+
+  @media (max-width:640px){
+    .plate{flex-direction:column;align-items:flex-start;}
+    .plate-meta{text-align:left;}
+    .meter-panel{padding:26px 22px;}
+    .sc-row{grid-template-columns:80px 1fr 82px;}
+    .topbar-inner{flex-direction:column;align-items:flex-start;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:0.01ms !important;transition-duration:0.01ms !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="plate">
+    <div>
+      <p class="plate-eyebrow">Grupo Logístico Mesoamérica</p>
+      <h1 class="plate-title">Control de Uso de Montacargas</h1>
+      <p class="plate-sub" id="plate-sub">Flota por sector · Detección automática desde tu Google Sheets</p>
+    </div>
+    <div class="plate-meta">
+      Periodo: <span id="period-label">—</span><br>
+      Última actualización: <span class="updated" id="updated-label">—</span>
+    </div>
+  </div>
+
+  <div class="filters-row">
+    <div class="sector-toggle" role="group" aria-label="Filtrar por sector" id="sector-toggle"></div>
+    <div class="sector-toggle" role="group" aria-label="Filtrar por propiedad" id="propiedad-toggle"></div>
+    <div class="sector-toggle" role="group" aria-label="Filtrar por tipo de aditamento" id="aditamento-toggle"></div>
+    <div class="period-select-wrap">
+      <label for="year-select">Periodo</label>
+      <select id="year-select" aria-label="Filtrar por año"></select>
+      <select id="month-select" aria-label="Filtrar por mes"></select>
+    </div>
+  </div>
+
+  <div class="meter-panel">
+    <div class="meter-main">
+      <p class="meter-label">Horas trabajadas — periodo completo</p>
+      <div class="hero-number"><span id="hero-value">0</span><span class="unit">HRS</span></div>
+      <div class="hero-underline"></div>
+      <p class="meter-caption" id="meter-caption">— unidades activas en el periodo</p>
+    </div>
+    <div class="meter-side">
+      <div class="mini-stat">
+        <div class="v" id="stat-promedio">—</div>
+        <div class="l">Prom. horas / montacargas / día</div>
+      </div>
+      <div class="mini-stat">
+        <div class="v" id="stat-inactivo">—</div>
+        <div class="l">Días sin uso registrado</div>
+      </div>
+    </div>
+    <div class="meter-ring-col">
+      <svg class="ring-svg" id="ring-svg" viewBox="0 0 40 40"></svg>
+      <div class="ring-legend" id="ring-legend"></div>
+      <div class="ring-title">Horas por propiedad</div>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <p class="l">Mayor uso</p>
+      <p class="v" id="kpi-top">—</p>
+      <p class="d" id="kpi-top-d">&nbsp;</p>
+    </div>
+    <div class="kpi-card green">
+      <p class="l">Menor uso</p>
+      <p class="v" id="kpi-low">—</p>
+      <p class="d" id="kpi-low-d">&nbsp;</p>
+    </div>
+    <div class="kpi-card">
+      <p class="l">Unidades en flota</p>
+      <p class="v" id="kpi-fleet">—</p>
+      <p class="d">En el filtro actual</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2 class="section-title">Horas trabajadas</h2>
+      <div class="pill-toggle" id="granularity-toggle">
+        <button data-g="dia">Día</button>
+        <button data-g="semana">Semana</button>
+        <button data-g="mes" class="active">Mes</button>
+      </div>
+    </div>
+    <svg class="trend-svg" id="trend-svg" viewBox="0 0 1080 220" preserveAspectRatio="none"></svg>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2 class="section-title">Horas por unidad</h2>
+      <span class="section-hint">mayor a menor, periodo completo</span>
+    </div>
+    <div id="ranking-bars"></div>
+    <div class="sector-legend" id="sector-legend"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2 class="section-title">Comparativo por sector</h2>
+      <span class="section-hint">horas totales, periodo completo</span>
+    </div>
+    <div class="sector-compare" id="sector-compare"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2 class="section-title">Control por Unidad</h2>
+      <span class="section-hint">ordenado por horas totales</span>
+    </div>
+    <table class="manifest">
+      <thead>
+        <tr><th>Unidad</th><th>Marca</th><th>Sector</th><th>Horómetro</th><th>Horas totales</th><th>Prom. / día</th><th>Días inactivo</th><th>% sin uso</th><th></th></tr>
+      </thead>
+      <tbody id="manifest-body"></tbody>
+    </table>
+  </div>
+
+  <footer>
+    <span>Fuente: tabla de horómetros (Google Sheets maestro) · Rango completo del periodo</span>
+    <span>Grupo Logístico Mesoamérica</span>
+  </footer>
+
+</div>
+
+<div class="status-banner">
+  <span class="status-dot"></span>MODO PRUEBA — mostrando <strong>datos de ejemplo</strong>. Al conectar tu Google Sheets, este aviso mostrará la fecha real de última actualización.
+</div>
+
+<script>
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1q01zeP_r_d-g0LrV55YAeIUFanSHKlXfU_-jpme9JvA/gviz/tq?tqx=out:csv&gid=0";
+const MONTACARGAS_CSV_URL = "https://docs.google.com/spreadsheets/d/1q01zeP_r_d-g0LrV55YAeIUFanSHKlXfU_-jpme9JvA/export?format=csv&gid=690409653";
+const DATE_START = '2025-03-01', DATE_END = '2026-06-30';
+const SECTOR_PALETTE = ['#2052BB','#71B714','#2F8F86','#6B5CA5','#B8860B'];
+
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+const SAMPLE_FLEET = [
+  {id:'1', idm:'HY 42',   marca:'HY',   sector:'AMBEV', propiedad:'PROPIO', aditamento:'CUCHILLAS SIMPLES'},
+  {id:'2', idm:'YALE 27', marca:'YALE', sector:'AMBEV', propiedad:'RENTADO', aditamento:'CUCHILLAS DOBLES'},
+  {id:'3', idm:'HY 34',   marca:'HY',   sector:'AMBEV', propiedad:'PROPIO', aditamento:'CUCHILLAS SIMPLES'},
+  {id:'4', idm:'CROW 8',  marca:'CROW', sector:'AMBEV', propiedad:'PROPIO', aditamento:'RETRÁCTIL'},
+  {id:'5', idm:'YALE 1',  marca:'YALE', sector:'MTY', propiedad:'PROPIO', aditamento:'CUCHILLAS SIMPLES'},
+  {id:'6', idm:'YALE 2',  marca:'YALE', sector:'MTY', propiedad:'RENTADO', aditamento:'CUCHILLAS DOBLES'},
+  {id:'7', idm:'YALE 3',  marca:'YALE', sector:'MTY', propiedad:'PROPIO', aditamento:'CUCHILLAS SIMPLES'},
+  {id:'8', idm:'YALE 4',  marca:'YALE', sector:'MTY', propiedad:'RENTADO', aditamento:'CUCHILLAS DOBLES'},
+  {id:'9', idm:'UN 15',   marca:'UN',   sector:'MTY', propiedad:'PROPIO', aditamento:'RETRÁCTIL'},
+  {id:'10',idm:'CAPS 19', marca:'CAPS', sector:'MTY', propiedad:'RENTADO', aditamento:'CUCHILLAS DOBLES'},
+  {id:'11',idm:'CROW 5',  marca:'CROW', sector:'DISTRIPARK', propiedad:'PROPIO', aditamento:'CUCHILLAS SIMPLES'},
+  {id:'12',idm:'UN 22',   marca:'UN',   sector:'DISTRIPARK', propiedad:'PROPIO', aditamento:'RETRÁCTIL'},
+  {id:'13',idm:'HY 51',   marca:'HY',   sector:'DISTRIPARK', propiedad:'RENTADO', aditamento:'CUCHILLAS DOBLES'},
+  {id:'14',idm:'YALE 63', marca:'YALE', sector:'DISTRIPARK', propiedad:'PROPIO', aditamento:'CUCHILLAS SIMPLES'},
+];
+
+function dateRangeArray(startISO,endISO){
+  const out=[]; let d=new Date(startISO+'T00:00:00'); const end=new Date(endISO+'T00:00:00');
+  while(d<=end){ out.push(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1); }
+  return out;
+}
+
+function generateSampleData(){
+  const rand = mulberry32(20260821);
+  const dates = dateRangeArray(DATE_START, DATE_END);
+  const rows = [];
+  const running = {};
+  SAMPLE_FLEET.forEach(f=>{ running[f.id] = 200 + Math.floor(rand()*800); });
+  dates.forEach(iso=>{
+    SAMPLE_FLEET.forEach(f=>{
+      const idle = rand() < 0.18;
+      let horas = 0;
+      if(!idle){ horas = Math.round((2.5 + rand()*8.5)*10)/10; }
+      running[f.id] = Math.round((running[f.id]+horas)*10)/10;
+      rows.push({id:f.id, idm:f.idm, marca:f.marca, sector:f.sector, fecha:iso, horas, horometro:running[f.id], propiedad:f.propiedad, aditamento:f.aditamento});
+    });
+  });
+  return rows;
+}
+
+function normalizeFecha(raw){
+  const m = /^Date\((\d+),(\d+),(\d+)\)/.exec(raw||'');
+  if(m){
+    const y = m[1], mo = String(parseInt(m[2],10)+1).padStart(2,'0'), d = String(parseInt(m[3],10)).padStart(2,'0');
+    return `${y}-${mo}-${d}`;
+  }
+  return raw;
+}
+
+function parseCSV(text){
+  const lines = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,'').toUpperCase());
+  return lines.slice(1).map(line=>{
+    const cells = line.match(/(".*?"|[^,]+)(?=,|$)/g) || [];
+    const clean = cells.map(c=>c.replace(/^"|"$/g,'').trim());
+    const row = {};
+    headers.forEach((h,i)=> row[h]=clean[i] ?? '');
+    let horas = parseFloat((row['HORAS DE USO']||'').replace(',','.'));
+    const hi = parseFloat((row['HOROMETRO INICIAL']||'').replace(',','.'));
+    const hf = parseFloat((row['HOROMETRO FINAL']||'').replace(',','.'));
+    if(isNaN(horas)){
+      horas = Math.max(0,((isNaN(hf)?0:hf)-(isNaN(hi)?0:hi))||0);
+    }
+    const horometro = Math.max(isNaN(hi)?0:hi, isNaN(hf)?0:hf);
+    const idm = row['ID_MONTACARGAS']||row['ID'];
+    const propiedad = (row['PROPIEDAD']||'').toUpperCase();
+    return {
+      id: row['ID']||idm, idm, marca: row['MARCA'],
+      sector: row['SECTOR'], fecha: normalizeFecha(row['FECHA']), horas, horometro, propiedad
+    };
+  }).filter(r => r.idm && r.fecha && /^\d{4}-\d{2}-\d{2}$/.test(r.fecha));
+}
+
+function parseMontacargasCSV(text){
+  const lines = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,'').toUpperCase());
+  const map = {};
+  lines.slice(1).forEach(line=>{
+    const cells = line.match(/(".*?"|[^,]+)(?=,|$)/g) || [];
+    const clean = cells.map(c=>c.replace(/^"|"$/g,'').trim());
+    const row = {};
+    headers.forEach((h,i)=> row[h]=clean[i] ?? '');
+    const idm = row['ID MONTACARGAS'];
+    if(idm){
+      map[idm] = {
+        modelo: row['MODELO']||'',
+        serie: row['SERIE']||'',
+        aditamento: row['ADITAMENTO']||'',
+        fabricacion: row['FABRICACIÓN']||''
+      };
+    }
+  });
+  return map;
+}
+
+async function loadData(){
+  if(SHEET_CSV_URL){
+    try{
+      const res = await fetch(SHEET_CSV_URL);
+      const text = await res.text();
+      let montacargasMap = {};
+      try{
+        const resMonta = await fetch(MONTACARGAS_CSV_URL);
+        const textMonta = await resMonta.text();
+        montacargasMap = parseMontacargasCSV(textMonta);
+      }catch(e2){
+        console.warn('No se pudo cargar la tabla MONTACARGAS.', e2);
+      }
+      const rows = parseCSV(text).map(r=>{
+        const info = montacargasMap[r.idm] || {};
+        return {...r, aditamento: info.aditamento||'', modelo: info.modelo||'', serie: info.serie||'', fabricacion: info.fabricacion||''};
+      });
+      return {rows, live:true};
+    }catch(e){
+      console.warn('No se pudo cargar el Sheet en vivo, usando datos de ejemplo.', e);
+    }
+  }
+  return {rows: generateSampleData(), live:false};
+}
+
+/* ---------------- estado global ---------------- */
+let ALL_ROWS = [];
+let SECTORS = [];
+let SECTOR_WORKING_DAYS = new Set();
+let currentSector = 'TODOS';
+let currentPropiedad = 'TODOS';
+let currentAditamento = 'TODOS';
+let currentGranularity = 'mes';
+let currentPeriod = 'todos';
+const MESES_FULL=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function sectorColor(sector){
+  const idx = SECTORS.indexOf(sector);
+  return SECTOR_PALETTE[(idx<0?0:idx) % SECTOR_PALETTE.length];
+}
+
+function indexSectors(rows){
+  SECTORS = [];
+  rows.forEach(r=>{ if(r.sector && !SECTORS.includes(r.sector)) SECTORS.push(r.sector); });
+}
+
+function buildSectorWorkingDays(rows){
+  const s = new Set();
+  rows.forEach(r=>{ if(r.horas>0) s.add(r.sector+'|'+r.fecha); });
+  return s;
+}
+
+function buildSectorToggle(){
+  const el = document.getElementById('sector-toggle');
+  const btns = ['<button data-sector="TODOS" class="active">TODOS</button>'].concat(
+    SECTORS.map(s=>`<button data-sector="${s}" style="--sc:${sectorColor(s)}">${s}</button>`)
+  );
+  el.innerHTML = btns.join('');
+  el.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      el.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      currentSector = btn.dataset.sector;
+      render();
+    });
+  });
+}
+
+function buildPropiedadToggle(){
+  const propiedades = [...new Set(ALL_ROWS.map(r=>r.propiedad).filter(Boolean))];
+  const el = document.getElementById('propiedad-toggle');
+  const btns = ['<button data-prop="TODOS" class="active">TODOS</button>'].concat(
+    propiedades.map(p=>`<button data-prop="${p}">${p}</button>`)
+  );
+  el.innerHTML = btns.join('');
+  el.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      el.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPropiedad = btn.dataset.prop;
+      render();
+    });
+  });
+}
+
+function buildAditamentoToggle(){
+  const tipos = [...new Set(ALL_ROWS.map(r=>r.aditamento).filter(Boolean))];
+  const el = document.getElementById('aditamento-toggle');
+  const btns = ['<button data-adit="TODOS" class="active">TODOS</button>'].concat(
+    tipos.map(t=>`<button data-adit="${t}">${t}</button>`)
+  );
+  el.innerHTML = btns.join('');
+  el.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      el.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      currentAditamento = btn.dataset.adit;
+      render();
+    });
+  });
+}
+
+function fmt(n, dec=1){ return n.toLocaleString('es-GT',{minimumFractionDigits:dec, maximumFractionDigits:dec}); }
+
+function animateHero(target){
+  const el = document.getElementById('hero-value');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){ el.textContent = fmt(target,1); return; }
+  const start = performance.now(); const dur = 900;
+  function tick(now){
+    const p = Math.min(1,(now-start)/dur);
+    const eased = 1 - Math.pow(1-p,3);
+    el.textContent = fmt(target*eased,1);
+    if(p<1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function isoWeekStart(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  const day = (d.getDay()+6)%7;
+  d.setDate(d.getDate()-day);
+  return d.toISOString().slice(0,10);
+}
+function monthKeyOf(dateStr){ return dateStr.slice(0,7); }
+const MESES3=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+function buildPeriodOptions(){
+  const months = [...new Set(ALL_ROWS.map(r=>monthKeyOf(r.fecha)))].sort();
+  const years = [...new Set(months.map(m=>m.slice(0,4)))].sort().reverse();
+
+  const yearSel = document.getElementById('year-select');
+  const monthSel = document.getElementById('month-select');
+  yearSel.innerHTML = ['<option value="todos">Todo el periodo</option>']
+    .concat(years.map(y=>`<option value="${y}">${y}</option>`)).join('');
+
+  function monthsForYear(y){ return months.filter(m=>m.startsWith(y+'-')); }
+
+  function refreshMonthSelect(selectedYear){
+    if(selectedYear === 'todos'){
+      monthSel.innerHTML = '';
+      monthSel.style.display = 'none';
+      currentPeriod = 'todos';
+      return;
+    }
+    monthSel.style.display = '';
+    const avail = monthsForYear(selectedYear);
+    const opts = [`<option value="${selectedYear}">Todo el año</option>`].concat(
+      avail.map(mk=>{
+        const m = mk.split('-')[1];
+        return `<option value="${mk}">${MESES_FULL[parseInt(m,10)-1]}</option>`;
+      })
+    );
+    monthSel.innerHTML = opts.join('');
+    monthSel.value = selectedYear;
+    currentPeriod = selectedYear;
+  }
+
+  function syncGranularity(){
+    const isSpecificMonth = currentPeriod !== 'todos' && currentPeriod.length === 7;
+    if(isSpecificMonth && currentGranularity === 'mes'){
+      currentGranularity = 'dia';
+      document.querySelectorAll('#granularity-toggle button').forEach(b=>b.classList.toggle('active', b.dataset.g==='dia'));
+    }
+  }
+
+  yearSel.value = 'todos';
+  refreshMonthSelect('todos');
+
+  yearSel.addEventListener('change', ()=>{
+    refreshMonthSelect(yearSel.value);
+    syncGranularity();
+    render();
+  });
+  monthSel.addEventListener('change', ()=>{
+    currentPeriod = monthSel.value;
+    syncGranularity();
+    render();
+  });
+}
+
+function buildTrendPoints(rows){
+  if(currentGranularity==='dia'){
+    const allDates = [...new Set(rows.map(r=>r.fecha))].sort();
+    const recent = allDates.slice(-45);
+    return recent.map(d=>({label:d.slice(5), value: rows.filter(r=>r.fecha===d).reduce((s,r)=>s+r.horas,0)}));
+  }
+  if(currentGranularity==='semana'){
+    const byWeek = {};
+    rows.forEach(r=>{ const wk = isoWeekStart(r.fecha); byWeek[wk]=(byWeek[wk]||0)+r.horas; });
+    return Object.keys(byWeek).sort().map(wk=>({label:wk.slice(5), value:byWeek[wk]}));
+  }
+  const byMonth = {};
+  rows.forEach(r=>{ const mk = monthKeyOf(r.fecha); byMonth[mk]=(byMonth[mk]||0)+r.horas; });
+  return Object.keys(byMonth).sort().map(mk=>{
+    const [y,m]=mk.split('-');
+    return {label: MESES3[parseInt(m,10)-1]+' '+y.slice(2), value: byMonth[mk]};
+  });
+}
+
+function periodMatches(fecha, period){
+  if(period === 'todos') return true;
+  if(period.length === 4) return fecha.slice(0,4) === period;
+  return monthKeyOf(fecha) === period;
+}
+
+function buildPropiedadRing(rows){
+  const svg = document.getElementById('ring-svg');
+  const legend = document.getElementById('ring-legend');
+  const totals = {};
+  let grandTotal = 0;
+  rows.forEach(r=>{
+    const key = r.propiedad || 'SIN DATO';
+    totals[key] = (totals[key]||0) + r.horas;
+    grandTotal += r.horas;
+  });
+  const categories = Object.keys(totals);
+  if(!grandTotal || !categories.length){
+    svg.innerHTML = '';
+    legend.innerHTML = '<span class="ring-empty">Sin datos</span>';
+    return;
+  }
+  const R = 15.9, CX = 20, CY = 20, STROKE = 7;
+  const circumference = 2*Math.PI*R;
+  let offsetAcc = 0;
+  let circles = '';
+  categories.forEach((cat,i)=>{
+    const pct = totals[cat]/grandTotal;
+    const dash = pct*circumference;
+    const color = SECTOR_PALETTE[i % SECTOR_PALETTE.length];
+    circles += `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${color}" stroke-width="${STROKE}" stroke-dasharray="${dash} ${circumference-dash}" stroke-dashoffset="${-offsetAcc}" transform="rotate(-90 ${CX} ${CY})"><title>${cat}: ${fmt(totals[cat],1)} h</title></circle>`;
+    offsetAcc += dash;
+  });
+  svg.innerHTML = circles;
+  legend.innerHTML = categories.map((cat,i)=>{
+    const pct = Math.round(totals[cat]/grandTotal*100);
+    const color = SECTOR_PALETTE[i % SECTOR_PALETTE.length];
+    return `<div class="ring-item"><span class="ring-dot" style="background:${color}"></span>${cat} <b>${pct}%</b></div>`;
+  }).join('');
+}
+
+function render(){
+  const periodRows = ALL_ROWS.filter(r=>periodMatches(r.fecha, currentPeriod) && (currentPropiedad==='TODOS' || r.propiedad===currentPropiedad) && (currentAditamento==='TODOS' || r.aditamento===currentAditamento));
+  const rows = currentSector==='TODOS' ? periodRows : periodRows.filter(r=>r.sector===currentSector);
+  const unitIdms = [...new Set(rows.map(r=>r.idm))];
+  const rangeDates = [...new Set(periodRows.map(r=>r.fecha))].sort();
+
+  document.getElementById('period-label').textContent = rangeDates.length ? `${rangeDates[0]} → ${rangeDates[rangeDates.length-1]}` : '—';
+  document.getElementById('plate-sub').textContent = `${SECTORS.length} sector(es) detectados: ${SECTORS.join(', ')}`;
+
+  const totalHoras = rows.reduce((s,r)=>s+r.horas,0);
+  const relevantRows = rows.filter(r=>SECTOR_WORKING_DAYS.has(r.sector+'|'+r.fecha));
+  const totalRegistros = relevantRows.length;
+  const registrosInactivos = relevantRows.filter(r=>r.horas===0).length;
+  const promedio = totalRegistros ? totalHoras/totalRegistros : 0;
+
+  animateHero(totalHoras);
+  document.getElementById('meter-caption').textContent = `${unitIdms.length} unidades activas en el periodo`;
+  document.getElementById('stat-promedio').innerHTML = `${fmt(promedio,1)} <small>hrs</small>`;
+  document.getElementById('stat-inactivo').innerHTML = `${totalRegistros? Math.round(100*registrosInactivos/totalRegistros):0}<small>%</small>`;
+  buildPropiedadRing(rows);
+
+  const byId = unitIdms.map(idm=>{
+    const r = rows.filter(x=>x.idm===idm);
+    const total = r.reduce((s,x)=>s+x.horas,0);
+    const relevant = r.filter(x=>SECTOR_WORKING_DAYS.has(x.sector+'|'+x.fecha));
+    const inact = relevant.filter(x=>x.horas===0).length;
+    const pctInact = relevant.length ? Math.round(100*inact/relevant.length) : 0;
+    const first = r[0];
+    const horometroMax = Math.max(0, ...r.map(x=>x.horometro||0));
+    return {id:idm, idm:first.idm, marca:first.marca, sector:first.sector, total, prom: r.length? total/r.length:0, inact, pctInact, horometroMax};
+  }).sort((a,b)=>b.total-a.total);
+
+  if(byId.length){
+    const top = byId[0], low = byId[byId.length-1];
+    document.getElementById('kpi-top').textContent = top.idm;
+    document.getElementById('kpi-top-d').textContent = `${fmt(top.total,1)} hrs totales`;
+    document.getElementById('kpi-low').textContent = low.idm;
+    document.getElementById('kpi-low-d').textContent = `${fmt(low.total,1)} hrs totales`;
+  }
+  document.getElementById('kpi-fleet').textContent = unitIdms.length;
+
+  const body = document.getElementById('manifest-body');
+  body.innerHTML = byId.map((r,i)=>{
+    let badge = '';
+    if(i===0) badge = '<span class="badge top">MAYOR USO</span>';
+    if(i===byId.length-1 && byId.length>1) badge = '<span class="badge low">MENOR USO</span>';
+    const diasLabel = r.inact===1 ? 'día' : 'días';
+    return `<tr>
+      <td class="id-cell">${r.idm}</td>
+      <td>${r.marca}</td>
+      <td><span class="sector-pill" style="background:${sectorColor(r.sector)}">${r.sector}</span></td>
+      <td>${fmt(r.horometroMax,1)} h</td>
+      <td>${fmt(r.total,1)} h</td>
+      <td>${fmt(r.prom,1)} h</td>
+      <td>${r.inact} ${diasLabel}</td>
+      <td>${r.pctInact}%</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+
+  const maxBar = Math.max(1, ...byId.map(r=>r.total));
+  document.getElementById('ranking-bars').innerHTML = byId.map(r=>`
+    <div class="bar-row">
+      <span class="bar-label">${r.idm}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${(r.total/maxBar*100).toFixed(1)}%;background:${sectorColor(r.sector)}"></div></div>
+      <span class="bar-value">${fmt(r.total,1)} h</span>
+    </div>`).join('');
+  document.getElementById('sector-legend').innerHTML = SECTORS.map(s=>`<span><span class="legend-dot" style="background:${sectorColor(s)}"></span>${s}</span>`).join('');
+
+  const trendPoints = buildTrendPoints(rows);
+  const svg = document.getElementById('trend-svg');
+  const W=1080, H=220, pad=28, bw = (W-2*pad)/Math.max(1,trendPoints.length);
+  const max = Math.max(1, ...trendPoints.map(p=>p.value));
+  let bars = '';
+  trendPoints.forEach((p,i)=>{
+    const h = (p.value/max)*(H-2*pad);
+    const x = pad + i*bw; const y = H-pad-h;
+    bars += `<rect class="trend-bar" x="${x+1.2}" y="${y}" width="${Math.max(1,bw-2.4)}" height="${h}" rx="1.5"><title>${p.label}: ${fmt(p.value,1)} hrs</title></rect>`;
+  });
+  const labelEvery = Math.max(1,Math.ceil(trendPoints.length/10));
+  let labels = '';
+  trendPoints.forEach((p,i)=>{
+    if(i%labelEvery===0){
+      const x = pad + i*bw + bw/2;
+      labels += `<text class="trend-label" x="${x}" y="${H-8}" text-anchor="middle">${p.label}</text>`;
+    }
+  });
+  svg.innerHTML = `<line class="trend-axis" x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}"/>${bars}${labels}`;
+
+  const totalsBySector = SECTORS.map(s=> periodRows.filter(r=>r.sector===s).reduce((a,r)=>a+r.horas,0));
+  const maxSector = Math.max(...totalsBySector,1);
+  document.getElementById('sector-compare').innerHTML = SECTORS.map((s,i)=>`
+    <div class="sc-row">
+      <div class="sc-name">${s}</div>
+      <div class="sc-track"><div class="sc-fill" style="width:${(totalsBySector[i]/maxSector*100).toFixed(1)}%;background:${sectorColor(s)}"></div></div>
+      <div class="sc-val">${fmt(totalsBySector[i],0)} h</div>
+    </div>`).join('');
+}
+
+document.getElementById('granularity-toggle').querySelectorAll('button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#granularity-toggle button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentGranularity = btn.dataset.g;
+    render();
+  });
+});
+
+loadData().then(({rows, live})=>{
+  ALL_ROWS = rows;
+  SECTOR_WORKING_DAYS = buildSectorWorkingDays(rows);
+  indexSectors(rows);
+  buildSectorToggle();
+  buildPropiedadToggle();
+  buildAditamentoToggle();
+  buildPeriodOptions();
+  if(live){
+    document.querySelector('.status-banner').innerHTML = `<span class="status-dot"></span>Datos en vivo desde Google Sheets`;
+    document.getElementById('updated-label').textContent = new Date().toLocaleString('es-GT');
+  } else {
+    document.getElementById('updated-label').textContent = 'ejemplo (sin fecha real)';
+  }
+  render();
+});
+</script>
+</body>
+</html>
