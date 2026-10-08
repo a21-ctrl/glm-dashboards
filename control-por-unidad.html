@@ -120,6 +120,11 @@
       <p class="v" id="kpi-meses">—</p>
       <p class="d">Histórico completo de la unidad</p>
     </div>
+    <div class="kpi-card">
+      <p class="l">Prom. horas / montacargas / día</p>
+      <p class="v" id="kpi-promedio">—</p>
+      <p class="d" id="kpi-promedio-caption">Días con operación en su sector</p>
+    </div>
   </div>
 
   <div class="section">
@@ -291,6 +296,7 @@ async function loadData(){
 }
 
 let ALL_ROWS = [];
+let SECTOR_WORKING_DAYS = new Set();
 let currentUnit = null;
 let currentGranularity = 'mes';
 const MESES3=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -368,6 +374,14 @@ function formatFechaCorta(iso){
   return `${d}/${m}/${y}`;
 }
 
+/* Días en que el sector tuvo operación: al menos un montacargas del sector con horas > 0.
+   Mismo criterio que la página principal. */
+function buildSectorWorkingDays(rows){
+  const s = new Set();
+  rows.forEach(r=>{ if(r.horas>0) s.add(r.sector+'|'+r.fecha); });
+  return s;
+}
+
 function render(){
   if(!currentUnit){
     document.getElementById('empty-note').style.display = 'block';
@@ -406,6 +420,16 @@ function render(){
   document.getElementById('kpi-horometro').textContent = fmt(currentHorometro,1) + ' h';
   document.getElementById('kpi-horometro-caption').textContent = actual ? `Fecha de registro: ${formatFechaCorta(actual.fecha)}` : 'Sin registros';
   document.getElementById('kpi-meses').textContent = points.length;
+
+  // Prom. horas / montacargas / día — mismo cálculo que la página principal:
+  // horas totales ÷ registros de la unidad en días con operación en su sector
+  const totalHorasUnidad = rows.reduce((s,r)=>s+r.horas,0);
+  const registrosRelevantes = rows.filter(r=>SECTOR_WORKING_DAYS.has(r.sector+'|'+r.fecha)).length;
+  const promedioUnidad = registrosRelevantes ? totalHorasUnidad/registrosRelevantes : 0;
+  document.getElementById('kpi-promedio').textContent = fmt(promedioUnidad,1) + ' h';
+  document.getElementById('kpi-promedio-caption').textContent = registrosRelevantes
+    ? `${registrosRelevantes} días con operación en su sector`
+    : 'Sin registros';
   document.getElementById('unit-range-hint').textContent = points.length
     ? `${points[0].label} → ${points[points.length-1].label}`
     : '';
@@ -474,6 +498,7 @@ document.getElementById('granularity-toggle').querySelectorAll('button').forEach
 
 loadData().then(({rows, live})=>{
   ALL_ROWS = rows;
+  SECTOR_WORKING_DAYS = buildSectorWorkingDays(rows);
   buildUnitOptions();
   if(live){
     document.querySelector('.status-banner').innerHTML = `<span class="status-dot"></span>Datos en vivo desde Google Sheets`;
