@@ -128,6 +128,36 @@
 
   footer{margin-top:36px;padding-top:18px;border-top:1px solid var(--border);font-family:var(--font-body);font-size:12px;color:var(--text-mute);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
 
+  /* ---- Programa de servicios ---- */
+  :root{ --red:#C62828; --red-bg:#FDECEA; --amber:#A86400; --amber-bg:#FFF3DC; --ok-bg:#F0F6E3; }
+  .serv-badge{display:inline-block;font-family:var(--font-display);font-weight:700;font-size:10px;letter-spacing:.05em;padding:3px 9px;border-radius:4px;white-space:nowrap;}
+  .serv-badge.vencido{background:var(--red-bg);color:var(--red);}
+  .serv-badge.proximo{background:var(--amber-bg);color:var(--amber);}
+  .serv-badge.aldia{background:var(--ok-bg);color:var(--green-dark);}
+  .serv-track{background:#EEF1F6;border-radius:4px;height:8px;overflow:hidden;min-width:90px;}
+  .serv-fill{height:100%;border-radius:4px;}
+  .serv-fill.vencido{background:var(--red);} .serv-fill.proximo{background:#E0A100;} .serv-fill.aldia{background:var(--green);}
+  .serv-neg{color:var(--red);font-weight:600;}
+  .serv-mayor{color:var(--blue-dark);}
+  .serv-warn{display:inline-block;margin-left:6px;color:var(--amber);font-weight:700;cursor:help;}
+  .serv-sub{display:block;font-size:11.5px;color:var(--text-mute);margin-top:2px;}
+  .table-scroll{overflow-x:auto;}
+  .serv-empty{font-family:var(--font-body);font-size:13px;color:var(--text-mute);padding:18px 0;text-align:center;}
+
+  .maint-alert{display:flex;flex-wrap:wrap;align-items:center;gap:14px 22px;background:var(--panel);border:1px solid var(--border);border-left:5px solid var(--green);border-radius:10px;padding:16px 20px;margin:-10px 0 26px;box-shadow:0 1px 3px rgba(8,43,94,0.05);}
+  .maint-alert.vencido{border-left-color:var(--red);} .maint-alert.proximo{border-left-color:#E0A100;}
+  .maint-alert .ma-title{font-family:var(--font-display);font-weight:700;font-size:11.5px;letter-spacing:.10em;text-transform:uppercase;color:var(--blue-dark);}
+  .maint-alert .ma-counts{display:flex;gap:8px;flex-wrap:wrap;}
+  .maint-alert .ma-count{font-family:var(--font-display);font-weight:700;font-size:12px;padding:5px 11px;border-radius:20px;}
+  .ma-count.vencido{background:var(--red-bg);color:var(--red);} .ma-count.proximo{background:var(--amber-bg);color:var(--amber);} .ma-count.aldia{background:var(--ok-bg);color:var(--green-dark);}
+  .maint-alert .ma-text{flex:1;min-width:220px;font-size:13px;color:var(--text-dim);}
+  .maint-alert .ma-text b{color:var(--text);}
+  .maint-alert a{font-family:var(--font-display);font-weight:600;font-size:12px;color:var(--blue);text-decoration:none;white-space:nowrap;}
+  .maint-alert a:hover{text-decoration:underline;}
+  .section-note{font-family:var(--font-body);font-size:12px;color:var(--text-mute);margin:14px 0 0;}
+  tr.serv-notes td{background:#FFFAF0;font-size:12.5px;color:var(--text-dim);padding:8px 10px 10px 22px;}
+  button.serv-warn{background:none;border:none;padding:0 2px;font-size:14px;line-height:1;}
+  button.serv-warn:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:3px;}
   @media (max-width:640px){
     .plate{flex-direction:column;align-items:flex-start;}
     .plate-meta{text-align:left;}
@@ -155,6 +185,8 @@
       Última actualización: <span class="updated" id="updated-label">—</span>
     </div>
   </div>
+
+  <div class="maint-alert" id="maint-alert" hidden></div>
 
   <div class="filters-row">
     <div class="filter-group">
@@ -216,6 +248,22 @@
       <p class="v" id="kpi-fleet">—</p>
       <p class="d">En el filtro actual</p>
     </div>
+  </div>
+
+  <div class="section" id="programa-servicios">
+    <div class="section-head">
+      <h2 class="section-title">Programa de mantenimiento</h2>
+      <span class="section-hint">Propios activos · servicio cada 200 h · no depende del periodo</span>
+    </div>
+    <div class="table-scroll">
+      <table class="manifest">
+        <thead>
+          <tr><th>Unidad</th><th>Operación</th><th>Horómetro</th><th>Último servicio</th><th>Avance del intervalo</th><th>Próximo servicio</th><th>Uso prom.</th><th>Fecha estimada</th><th>Estado</th></tr>
+        </thead>
+        <tbody id="serv-body"></tbody>
+      </table>
+    </div>
+    <p class="section-note" id="serv-note"></p>
   </div>
 
   <div class="section">
@@ -336,6 +384,198 @@ function normalizeFecha(raw){
   return raw;
 }
 
+/* =====================================================================
+   PROGRAMA DE SERVICIOS (mantenimiento preventivo)
+   Lógica: solo montacargas PROPIO + ACTIVO (hoja MONTACARGAS).
+   Ciclo 200 → 400 → 600 → 800 → 1000 (menores) → 1200 (MAYOR) → 200 ...
+   Horas desde el último servicio = horómetro depurado desde que la unidad
+   alcanzó el horómetro del último servicio. Uso promedio = horas de los
+   últimos 365 días / 365 (días calendario). Misma lógica que el Excel
+   "Pronostico_Servicios_Montacargas_2027".
+   ===================================================================== */
+const SERV_INTERVALO = 200;          // horas entre servicios
+const SERV_CICLO = 6;                // 6 servicios por ciclo; el 6.º (1200) es MAYOR
+const SERV_UMBRAL_PROXIMO = 50;      // horas restantes para marcar "Próximo"
+const SERV_VENTANA_DIAS = 365;       // ventana para el uso promedio
+const SERV_DIAS_SIN_LECTURA = 15;    // aviso si la unidad no tiene lecturas recientes
+const SERV_DIAS_DIF_FECHA = 30;      // aviso si la fecha de la hoja no cuadra con el horómetro
+// Respaldo: versión publicada de la hoja MONTACARGAS (se usa si la otra no trae las columnas de servicio)
+const MONTACARGAS_PUB_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRFF9E1LutNGbFqT8QB_gfw4-i_lGnXf6fo55h1HKFn3YH-RzTfCq5lPZYIuNiju1VDJkwNw6nRoj5d/pub?gid=690409653&single=true&output=csv";
+
+let FLOTA_SERV = [];   // filas de la hoja MONTACARGAS con datos de servicio
+
+/* CSV robusto: respeta comillas y celdas vacías */
+function csvToObjects(text){
+  const rows = []; let row = [], cell = '', q = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(q){
+      if(c === '"'){ if(text[i+1] === '"'){ cell += '"'; i++; } else q = false; }
+      else cell += c;
+    } else if(c === '"') q = true;
+    else if(c === ','){ row.push(cell); cell = ''; }
+    else if(c === '\n' || c === '\r'){
+      if(c === '\r' && text[i+1] === '\n') i++;
+      row.push(cell); rows.push(row); row = []; cell = '';
+    } else cell += c;
+  }
+  if(cell !== '' || row.length){ row.push(cell); rows.push(row); }
+  if(!rows.length) return [];
+  const headers = rows[0].map(servKey);
+  return rows.slice(1).filter(r=>r.some(x=>x.trim()!=='')).map(r=>{
+    const o = {}; headers.forEach((h,i)=> o[h] = (r[i]||'').trim()); return o;
+  });
+}
+function servKey(h){
+  return (h||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+}
+function servNum(s){
+  s = (s||'').toString().trim().replace(/\s/g,'');
+  if(!s) return NaN;
+  if(s.includes(',') && s.includes('.')){
+    s = s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g,'').replace(',','.') : s.replace(/,/g,'');
+  } else if(s.includes(',')){
+    s = /^-?\d{1,3}(,\d{3})+$/.test(s) ? s.replace(/,/g,'') : s.replace(',','.');
+  }
+  return parseFloat(s);
+}
+function servFecha(s){
+  s = (s||'').trim(); if(!s) return '';
+  let m = /^Date\((\d+),(\d+),(\d+)/.exec(s);
+  if(m) return `${m[1]}-${String(+m[2]+1).padStart(2,'0')}-${String(+m[3]).padStart(2,'0')}`;
+  m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
+  if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/.exec(s);
+  if(m){
+    let d = +m[1], mo = +m[2], y = +m[3]; if(y < 100) y += 2000;
+    if(mo > 12 && d <= 12){ const t = d; d = mo; mo = t; }   // por si viene m/d/aaaa
+    return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  return '';
+}
+function parseFlotaServicios(text){
+  return csvToObjects(text).map(r=>({
+    idm: r['ID MONTACARGAS'] || '',
+    marca: r['MARCA'] || '',
+    aditamento: r['ADITAMENTO'] || '',
+    propiedad: (r['PROPIEDAD']||'').toUpperCase(),
+    estado: (r['ESTADO']||'').toUpperCase(),
+    operacion: r['OPERACION'] || '',
+    ultTipo: servNum(r['ULTIMO SERVICIO [TIPO DE SERVICIO]']),
+    ultHoro: servNum(r['ULTIMO SERVICIO [HOROMETRO]']),
+    ultFecha: servFecha(r['ULTIMO SERVICIO [FECHA]'])
+  })).filter(r=>r.idm);
+}
+async function loadFlotaServicios(textMontaPrincipal){
+  let flota = textMontaPrincipal ? parseFlotaServicios(textMontaPrincipal) : [];
+  if(!flota.some(f=>!isNaN(f.ultHoro))){
+    try{
+      const res = await fetch(MONTACARGAS_PUB_CSV_URL);
+      flota = parseFlotaServicios(await res.text());
+    }catch(e){ console.warn('No se pudo cargar la hoja MONTACARGAS publicada.', e); }
+  }
+  return flota;
+}
+
+function servDias(a,b){ return Math.round((Date.parse(b+'T00:00:00') - Date.parse(a+'T00:00:00'))/864e5); }
+function servSumarDias(iso, dias){
+  const d = new Date(iso+'T00:00:00'); d.setDate(d.getDate()+Math.floor(dias)); 
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function servFechaTxt(iso){ if(!iso) return '—'; const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; }
+function servSiguienteTipo(tipo, k){ return ((Math.round(tipo/SERV_INTERVALO) - 1 + k) % SERV_CICLO) * SERV_INTERVALO + SERV_INTERVALO; }
+
+/* Serie diaria depurada: corrige saltos de horómetro (reseteos, digitación) y duplicados */
+function servSerie(rows){
+  const byDate = {};
+  rows.forEach(r=>{
+    if(!(r.hf > 0)) return;
+    const d = byDate[r.fecha] || (byDate[r.fecha] = {hi:Infinity, hf:-Infinity, hu:0, n:0});
+    d.hi = Math.min(d.hi, isNaN(r.hi) ? 0 : r.hi); d.hf = Math.max(d.hf, r.hf); d.hu += r.horas||0; d.n++;
+  });
+  const out = []; let prev = null, pdate = null;
+  Object.keys(byDate).sort().forEach(f=>{
+    const d = byDate[f];
+    let hu = d.hf - d.hi;
+    if(hu < 0 || hu > 24) hu = d.n === 1 ? Math.min(Math.max(d.hu,0),24) : 0;
+    let inc;
+    if(prev === null) inc = hu;
+    else {
+      const gap = d.hf - prev, dias = servDias(pdate, f);
+      inc = (gap >= -50 && gap <= 20*dias) ? gap : hu;
+    }
+    out.push({fecha:f, hi:d.hi, hf:d.hf, inc});
+    prev = d.hf; pdate = f;
+  });
+  return out;
+}
+
+/* Calcula el estado de servicio de cada montacargas propio activo */
+function calcularServicios(allRows, flota){
+  if(!allRows.length || !flota.length) return [];
+  const corte = allRows.reduce((m,r)=> r.fecha > m ? r.fecha : m, '');
+  const inicioVentana = servSumarDias(corte, -SERV_VENTANA_DIAS);
+  return flota
+    .filter(f=>f.propiedad === 'PROPIO' && f.estado === 'ACTIVO' && !isNaN(f.ultHoro) && !isNaN(f.ultTipo))
+    .map(f=>{
+      const serie = servSerie(allRows.filter(r=>r.idm === f.idm));
+      const avisos = [];
+      // fecha en que el horómetro alcanzó el valor del último servicio (último cruce)
+      let cruce = null, prevHF = null, prevFecha = null;
+      serie.forEach(s=>{
+        let lo = (s.hf - s.hi >= 0 && s.hf - s.hi <= 24) ? s.hi : s.hf;
+        if(prevHF !== null && s.hf - prevHF >= 0 && s.hf - prevHF <= 200) lo = Math.min(lo, prevHF);
+        if(lo <= f.ultHoro && f.ultHoro <= s.hf) cruce = {...s, desde: prevFecha || s.fecha};
+        prevHF = s.hf; prevFecha = s.fecha;
+      });
+      let horasDesde;
+      if(cruce){
+        horasDesde = cruce.hf - f.ultHoro + serie.filter(s=>s.fecha > cruce.fecha).reduce((a,s)=>a+s.inc,0);
+        // el horómetro alcanzó el valor entre la lectura anterior (cruce.desde) y cruce.fecha
+        if(f.ultFecha && (servDias(cruce.desde, f.ultFecha) < -SERV_DIAS_DIF_FECHA || servDias(cruce.fecha, f.ultFecha) > SERV_DIAS_DIF_FECHA)){
+          const cuando = servDias(cruce.desde, cruce.fecha) > 7 ? `entre el ${servFechaTxt(cruce.desde)} y el ${servFechaTxt(cruce.fecha)}` : `el ${servFechaTxt(cruce.fecha)}`;
+          avisos.push(`La fecha del último servicio en la hoja (${servFechaTxt(f.ultFecha)}) no coincide con el horómetro: llegó a ${fmt(f.ultHoro,0)} h ${cuando}.`);
+        }
+      } else {
+        horasDesde = serie.filter(s=>f.ultFecha && s.fecha > f.ultFecha).reduce((a,s)=>a+s.inc,0);
+        avisos.push(`El horómetro registrado no coincide con el del último servicio (${fmt(f.ultHoro,0)} h); se sumaron las horas desde la fecha del servicio. Revisar.`);
+      }
+      const ultimaLectura = serie.length ? serie[serie.length-1].fecha : '';
+      const ultimoHF = serie.length ? serie[serie.length-1].hf : NaN;
+      if(!isNaN(ultimoHF) && Math.abs(ultimoHF - (f.ultHoro + horasDesde)) > 50)
+        avisos.push(`El último horómetro registrado (${fmt(ultimoHF,1)} h) no cuadra con el acumulado desde el servicio (${fmt(f.ultHoro + horasDesde,1)} h); se usó el acumulado. Verificar el horómetro.`);
+      if(ultimaLectura && servDias(ultimaLectura, corte) > SERV_DIAS_SIN_LECTURA)
+        avisos.push(`Sin lecturas de horómetro desde el ${servFechaTxt(ultimaLectura)}.`);
+      const primera = serie.length ? serie[0].fecha : corte;
+      const diasVentana = Math.max(1, Math.min(SERV_VENTANA_DIAS, servDias(primera, corte)));
+      const horasVentana = serie.filter(s=>s.fecha > inicioVentana && s.fecha <= corte).reduce((a,s)=>a+s.inc,0);
+      const tasa = horasVentana / diasVentana;
+      const restantes = SERV_INTERVALO - horasDesde;
+      const base = Math.max(0, restantes);
+      const proximos = [1,2,3].map(k=>{
+        const tipo = servSiguienteTipo(f.ultTipo, k);
+        const faltan = base + SERV_INTERVALO*(k-1);
+        return { tipo, mayor: tipo === SERV_INTERVALO*SERV_CICLO, faltan,
+                 fecha: tasa > 0 ? servSumarDias(corte, faltan / tasa) : '' };
+      });
+      const estado = restantes < 0 ? 'vencido' : (restantes <= SERV_UMBRAL_PROXIMO ? 'proximo' : 'aldia');
+      return { ...f, corte, horasDesde, restantes, tasa, horoActual: f.ultHoro + horasDesde,
+               ultimaLectura, proximos, estado, avisos };
+    })
+    .sort((a,b)=> a.restantes - b.restantes);
+}
+
+const SERV_ESTADO_TXT = {vencido:'VENCIDO', proximo:'PRÓXIMO', aldia:'AL DÍA'};
+function servBadge(s){ return `<span class="serv-badge ${s.estado}">${SERV_ESTADO_TXT[s.estado]}</span>`; }
+function servTipoTxt(p){ return p.mayor ? `<b class="serv-mayor">${p.tipo} · MAYOR</b>` : `${p.tipo} · menor`; }
+function servRestantesTxt(s){
+  return s.restantes < 0 ? `<span class="serv-neg">+${fmt(-s.restantes,0)} h vencido</span>` : `${fmt(s.restantes,0)} h restantes`;
+}
+function servBarra(s){
+  const pct = Math.min(100, Math.max(0, s.horasDesde / SERV_INTERVALO * 100));
+  return `<div class="serv-track" title="${fmt(s.horasDesde,0)} de ${SERV_INTERVALO} h"><div class="serv-fill ${s.estado}" style="width:${pct.toFixed(1)}%"></div></div>`;
+}
+
 function parseCSV(text){
   const lines = text.trim().split(/\r?\n/);
   const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,'').toUpperCase());
@@ -355,42 +595,38 @@ function parseCSV(text){
     const propiedad = (row['PROPIEDAD']||'').toUpperCase();
     return {
       id: row['ID']||idm, idm, marca: row['MARCA'],
-      sector: row['SECTOR'], fecha: normalizeFecha(row['FECHA']), horas, horometro, propiedad
+      sector: row['SECTOR'], fecha: normalizeFecha(row['FECHA']), horas, horometro, propiedad,
+      hi: isNaN(hi)?0:hi, hf: isNaN(hf)?0:hf
     };
   }).filter(r => r.idm && r.fecha && /^\d{4}-\d{2}-\d{2}$/.test(r.fecha));
 }
 
 function parseMontacargasCSV(text){
-  const lines = text.trim().split(/\r?\n/);
-  const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,'').toUpperCase());
+  /* usa el lector CSV robusto (respeta celdas vacías, p. ej. COMENTARIO) */
   const map = {};
-  lines.slice(1).forEach(line=>{
-    const cells = line.match(/(".*?"|[^,]+)(?=,|$)/g) || [];
-    const clean = cells.map(c=>c.replace(/^"|"$/g,'').trim());
-    const row = {};
-    headers.forEach((h,i)=> row[h]=clean[i] ?? '');
+  csvToObjects(text).forEach(row=>{
     const idm = row['ID MONTACARGAS'];
     if(idm){
       map[idm] = {
         modelo: row['MODELO']||'',
         serie: row['SERIE']||'',
         aditamento: row['ADITAMENTO']||'',
-        fabricacion: row['FABRICACIÓN']||''
+        fabricacion: row['FABRICACION']||''
       };
     }
   });
   return map;
 }
-
 async function loadData(){
   if(SHEET_CSV_URL){
     try{
       const res = await fetch(SHEET_CSV_URL);
       const text = await res.text();
       let montacargasMap = {};
+      let textMonta = '';
       try{
         const resMonta = await fetch(MONTACARGAS_CSV_URL);
-        const textMonta = await resMonta.text();
+        textMonta = await resMonta.text();
         montacargasMap = parseMontacargasCSV(textMonta);
       }catch(e2){
         console.warn('No se pudo cargar la tabla MONTACARGAS.', e2);
@@ -399,6 +635,7 @@ async function loadData(){
         const info = montacargasMap[r.idm] || {};
         return {...r, aditamento: info.aditamento||'', modelo: info.modelo||'', serie: info.serie||'', fabricacion: info.fabricacion||''};
       });
+      FLOTA_SERV = await loadFlotaServicios(textMonta);
       return {rows, live:true};
     }catch(e){
       console.warn('No se pudo cargar el Sheet en vivo, usando datos de ejemplo.', e);
@@ -712,6 +949,8 @@ function render(){
   });
   svg.innerHTML = `<line class="trend-axis" x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}"/>${bars}${labels}`;
 
+  renderMantenimiento();
+
   const totalsBySector = SECTORS.map(s=> periodRows.filter(r=>r.sector===s).reduce((a,r)=>a+r.horas,0));
   const maxSector = Math.max(...totalsBySector,1);
   document.getElementById('sector-compare').innerHTML = SECTORS.map((s,i)=>`
@@ -720,6 +959,76 @@ function render(){
       <div class="sc-track"><div class="sc-fill" style="width:${(totalsBySector[i]/maxSector*100).toFixed(1)}%;background:${sectorColor(s)}"></div></div>
       <div class="sc-val">${fmt(totalsBySector[i],0)} h</div>
     </div>`).join('');
+}
+
+let SERV_DATA = [];
+
+function renderAlertaMantenimiento(){
+  const el = document.getElementById('maint-alert');
+  if(!SERV_DATA.length){ el.hidden = true; return; }
+  const n = {vencido:0, proximo:0, aldia:0};
+  SERV_DATA.forEach(s=>n[s.estado]++);
+  const peor = n.vencido ? 'vencido' : (n.proximo ? 'proximo' : 'aldia');
+  el.className = 'maint-alert ' + peor;
+  const venc = SERV_DATA.filter(s=>s.estado==='vencido');
+  const sig = SERV_DATA.find(s=>s.estado!=='vencido');
+  const partes = [];
+  if(venc.length) partes.push('Vencidos: ' + venc.map(s=>`<b>${s.idm}</b>`).join(', '));
+  if(sig) partes.push(`Siguiente: <b>${sig.idm}</b> — ${sig.proximos[0].tipo}${sig.proximos[0].mayor?' MAYOR':''} en ${fmt(sig.restantes,0)} h (≈ ${servFechaTxt(sig.proximos[0].fecha)})`);
+  const texto = partes.join(' · ');
+  el.innerHTML = `<span class="ma-title">Mantenimiento preventivo</span>
+    <span class="ma-counts">
+      ${n.vencido?`<span class="ma-count vencido">${n.vencido} vencido${n.vencido>1?'s':''}</span>`:''}
+      ${n.proximo?`<span class="ma-count proximo">${n.proximo} próximo${n.proximo>1?'s':''} (≤ ${SERV_UMBRAL_PROXIMO} h)</span>`:''}
+      <span class="ma-count aldia">${n.aldia} al día</span>
+    </span>
+    <span class="ma-text">${texto}</span>
+    <a href="#programa-servicios">Ver programa ↓</a>`;
+  el.hidden = false;
+}
+
+function renderMantenimiento(){
+  const body = document.getElementById('serv-body');
+  const note = document.getElementById('serv-note');
+  if(!SERV_DATA.length){
+    body.innerHTML = `<tr><td colspan="9" class="serv-empty">${ALL_ROWS.length && FLOTA_SERV.length ? 'No hay montacargas propios activos con datos de último servicio.' : 'Datos de servicio no disponibles (se requiere la hoja MONTACARGAS en vivo).'}</td></tr>`;
+    note.textContent = '';
+    return;
+  }
+  if(currentPropiedad === 'RENTADO'){
+    body.innerHTML = '<tr><td colspan="9" class="serv-empty">El programa de servicios aplica solo a montacargas propios.</td></tr>';
+    return;
+  }
+  const lista = SERV_DATA.filter(s=>(currentSector==='TODOS' || s.operacion===currentSector) && (currentAditamento==='TODOS' || s.aditamento===currentAditamento));
+  if(!lista.length){
+    body.innerHTML = '<tr><td colspan="9" class="serv-empty">Sin montacargas propios activos en este filtro.</td></tr>';
+  } else {
+    body.innerHTML = lista.map((s,i)=>{
+      const p = s.proximos[0];
+      const warn = s.avisos.length ? `<button class="serv-warn" aria-expanded="false" aria-controls="serv-n-${i}" title="${s.avisos.join(' ').replace(/"/g,'&quot;')}">⚠</button>` : '';
+      const fila = `<tr>
+        <td class="id-cell">${s.idm}${warn}</td>
+        <td><span class="sector-pill" style="background:${sectorColor(s.operacion)}">${s.operacion}</span></td>
+        <td>${fmt(s.horoActual,1)} h</td>
+        <td>${s.ultTipo}${s.ultTipo===SERV_INTERVALO*SERV_CICLO?' MAYOR':''}<span class="serv-sub">a ${fmt(s.ultHoro,0)} h · ${servFechaTxt(s.ultFecha)}</span></td>
+        <td>${servBarra(s)}<span class="serv-sub">${fmt(s.horasDesde,0)} / ${SERV_INTERVALO} h</span></td>
+        <td>${servTipoTxt(p)}<span class="serv-sub">${servRestantesTxt(s)}</span></td>
+        <td>${fmt(s.tasa,1)} h/día</td>
+        <td>${s.estado==='vencido' ? '<span class="serv-neg">Ya</span>' : (p.fecha ? servFechaTxt(p.fecha) : 'Sin uso')}</td>
+        <td>${servBadge(s)}</td>
+      </tr>`;
+      const notas = s.avisos.length ? `<tr class="serv-notes" id="serv-n-${i}" hidden><td colspan="9">⚠ ${s.avisos.join('<br>⚠ ')}</td></tr>` : '';
+      return fila + notas;
+    }).join('');
+    body.querySelectorAll('button.serv-warn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const row = document.getElementById(btn.getAttribute('aria-controls'));
+        row.hidden = !row.hidden;
+        btn.setAttribute('aria-expanded', String(!row.hidden));
+      });
+    });
+  }
+  note.innerHTML = `Datos al ${servFechaTxt(SERV_DATA[0].corte)}. Fecha estimada = horas restantes ÷ uso promedio de los últimos 12 meses (días calendario). Próximo = ${SERV_UMBRAL_PROXIMO} h o menos. ⚠ = revisar datos (clic para ver el detalle).`;
 }
 
 document.getElementById('granularity-toggle').querySelectorAll('button').forEach(btn=>{
@@ -733,6 +1042,7 @@ document.getElementById('granularity-toggle').querySelectorAll('button').forEach
 
 loadData().then(({rows, live})=>{
   ALL_ROWS = rows;
+  SERV_DATA = calcularServicios(rows, FLOTA_SERV);
   SECTOR_WORKING_DAYS = buildSectorWorkingDays(rows);
   indexSectors(rows);
   buildSectorToggle();
@@ -746,6 +1056,7 @@ loadData().then(({rows, live})=>{
     document.getElementById('updated-label').textContent = 'ejemplo (sin fecha real)';
   }
   render();
+  renderAlertaMantenimiento();
 });
 </script>
 </body>
